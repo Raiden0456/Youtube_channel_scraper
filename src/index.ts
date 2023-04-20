@@ -89,8 +89,8 @@ async function getChannelData(channelId: string) {
     totalSubscribers,
     totalViews,
     totalLikes,
-    averageViews90,
     averageViews30,
+    averageViews90,
   };
 
   writeDataToFile(channelName, channelData);
