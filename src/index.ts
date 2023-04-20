@@ -82,6 +82,7 @@ async function getChannelData(channelId: string) {
   }, 0);
 
   const channelData = {
+    channelName,
     channelAge,
     totalSubscribers,
     totalViews,
@@ -90,8 +91,23 @@ async function getChannelData(channelId: string) {
     averageViews90,
   };
 
-  writeDataToFile(channelName, channelData);
-  console.log("Channel data saved to channel_data.json");
+  return channelData;
+}
+
+// Fetch data for multiple channels
+async function fetchMultipleChannels(channelIds: string[]) {
+  try {
+    // Map each channel ID to a promise that resolves to channel data
+    const channelDataPromises = channelIds.map((id) => getChannelData(id));
+    const allChannelData = await Promise.all(channelDataPromises);
+
+    for (const channelData of allChannelData) {
+      await writeDataToFile(channelData.channelName, channelData);
+    }
+    console.log('Scraped data located in channel_data.json file.');
+  } catch (error) {
+    console.error('Error fetching channel data:', error);
+  }
 }
 
 const rl = readline.createInterface({
@@ -104,11 +120,12 @@ rl.question(
   (channelId: string) => {
     if (channelId.includes(", ")) {
       const channelIds = channelId.split(", ");
-      channelIds.forEach(async (channelId) => {
-        await getChannelData(channelId);
-      });
+      fetchMultipleChannels(channelIds);
     } else {
-      getChannelData(channelId);
+      getChannelData(channelId).then((channelData) => {
+        writeDataToFile(channelData.channelName, channelData);
+        console.log('Scraped data located in channel_data.json file.');
+      });
     }
     rl.close();
   }
