@@ -1,8 +1,6 @@
 import axios from "axios";
-import fs from "fs";
 import readline from "readline";
 import dotenv from "dotenv";
-import { delay } from "./utils/delay.js";
 import Average from "./utils/average.js";
 import { writeDataToFile } from "./utils/writeFile.js";
 dotenv.config();
@@ -23,7 +21,6 @@ async function getVideoIds(playlistId: string, nextPageToken?: string) {
 
   //If there is a next page, recursively call this function
   if (videoResponse.data.nextPageToken) {
-    //await delay(1000);
     const nextPageVideoIds = await getVideoIds(
       playlistId,
       videoResponse.data.nextPageToken
