@@ -1,8 +1,26 @@
 {
-  "channelAge": 1,
-  "totalSubscribers": 219000,
-  "totalLikes": 267616,
-  "averageLikes360": 11635,
-  "averageLikes90": 12384,
-  "averageLikes30": 11838
+  "Beyond Fireship": {
+    "channelAge": 1,
+    "totalSubscribers": 219000,
+    "totalLikes": 267747,
+    "averageLikes360": 11641,
+    "averageLikes90": 12409,
+    "averageLikes30": 11867
+  },
+  "Fireship": {
+    "channelAge": 6,
+    "totalSubscribers": 2060000,
+    "totalLikes": 12277295,
+    "averageLikes360": 35642,
+    "averageLikes90": 37044,
+    "averageLikes30": 37745
+  },
+  "PewDiePie": {
+    "channelAge": 13,
+    "totalSubscribers": 111000000,
+    "totalLikes": 1254407986,
+    "averageLikes360": 269678,
+    "averageLikes90": 307071,
+    "averageLikes30": 143594
+  }
 }
