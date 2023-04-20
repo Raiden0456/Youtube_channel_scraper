@@ -83,6 +83,7 @@ async function getChannelData(channelId: string, years: number) {
   const channelName = channel.snippet.title;
 
   const videoIds = await getVideoIds(years, uploadsPlaylistId);
+  const amountOfVideosPerUserInput = videoIds.length;
   const videoStats = await getVideoStatistics(videoIds);
 
   const videos = await average.getVideoDetails(videoIds);
@@ -100,6 +101,7 @@ async function getChannelData(channelId: string, years: number) {
     channelAge,
     totalSubscribers,
     totalViews,
+    amountOfVideosPerUserInput,
     totalLikesPerUserInput,
     averageViews30,
     averageViews90,
