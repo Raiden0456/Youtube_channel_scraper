@@ -7,21 +7,36 @@ dotenv.config();
 
 const apiKey = process.env.YOUTUBE_API_KEY;
 
-// Get all video IDs in a playlist
-async function getVideoIds(playlistId: string, nextPageToken?: string) {
+// Get video IDs in a playlist that were uploaded in the last N years
+async function getVideoIds(
+  years: number,
+  playlistId: string,
+  nextPageToken?: string
+): Promise<string[]> {
   const videoUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults=50&playlistId=${playlistId}&key=${apiKey}${
     nextPageToken ? "&pageToken=" + nextPageToken : ""
   }`;
   const videoResponse = await axios.get(videoUrl);
 
-  //Returning an array containing only video IDs
-  const videoIds = videoResponse.data.items.map(
-    (item) => item.contentDetails.videoId
-  );
+  // Get the current timestamp
+  const now = new Date();
 
-  //If there is a next page, recursively call this function
+  // Returning an array containing only video IDs
+  const videoIds = videoResponse.data.items
+    .filter((item) => {
+      const videoDate = new Date(item.contentDetails.videoPublishedAt);
+      const daysDifference =
+        (now.getTime() - videoDate.getTime()) / (1000 * 60 * 60 * 24);
+
+      // Only include videos published in the last 365 days
+      return daysDifference <= years * 365;
+    })
+    .map((item) => item.contentDetails.videoId);
+
+  // If there is a next page, recursively call this function
   if (videoResponse.data.nextPageToken) {
     const nextPageVideoIds = await getVideoIds(
+      years,
       playlistId,
       videoResponse.data.nextPageToken
     );
@@ -52,7 +67,7 @@ async function getVideoStatistics(videoIds: string[]) {
 }
 
 // Scrape channel data main function
-async function getChannelData(channelId: string) {
+async function getChannelData(channelId: string, years: number) {
   const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&id=${channelId}&key=${apiKey}`;
   const channelResponse = await axios.get(channelUrl);
   const channel = channelResponse.data.items[0];
@@ -67,15 +82,14 @@ async function getChannelData(channelId: string) {
   const uploadsPlaylistId = channel.contentDetails.relatedPlaylists.uploads;
   const channelName = channel.snippet.title;
 
-
-  const videoIds = await getVideoIds(uploadsPlaylistId);
+  const videoIds = await getVideoIds(years, uploadsPlaylistId);
   const videoStats = await getVideoStatistics(videoIds);
 
   const videos = await average.getVideoDetails(videoIds);
   const averageViews90 = await average.getAverageViews(videos, 90);
   const averageViews30 = await average.getAverageViews(videos, 30);
 
-  const totalLikes = videoStats.reduce((total, stats) => {
+  const totalLikesPerUserInput = videoStats.reduce((total, stats) => {
     const likeCount = parseInt(stats.likeCount);
     // If likeCount is not a number, return the total without adding it
     return total + (Number.isFinite(likeCount) ? likeCount : 0);
@@ -86,7 +100,7 @@ async function getChannelData(channelId: string) {
     channelAge,
     totalSubscribers,
     totalViews,
-    totalLikes,
+    totalLikesPerUserInput,
     averageViews30,
     averageViews90,
   };
@@ -95,18 +109,20 @@ async function getChannelData(channelId: string) {
 }
 
 // Fetch data for multiple channels
-async function fetchMultipleChannels(channelIds: string[]) {
+async function fetchMultipleChannels(channelIds: string[], years: number) {
   try {
     // Map each channel ID to a promise that resolves to channel data
-    const channelDataPromises = channelIds.map((id) => getChannelData(id));
+    const channelDataPromises = channelIds.map((id) =>
+      getChannelData(id, years)
+    );
     const allChannelData = await Promise.all(channelDataPromises);
 
     for (const channelData of allChannelData) {
       await writeDataToFile(channelData.channelName, channelData);
     }
-    console.log('Scraped data located in channel_data.json file.');
+    console.log("Scraped data located in channel_data.json file.");
   } catch (error) {
-    console.error('Error fetching channel data:', error);
+    console.error("Error fetching channel data:", error);
   }
 }
 
@@ -118,15 +134,23 @@ const rl = readline.createInterface({
 rl.question(
   "Enter the channel ID(you can input multiple channels with separator ', '): ",
   (channelId: string) => {
-    if (channelId.includes(", ")) {
-      const channelIds = channelId.split(", ");
-      fetchMultipleChannels(channelIds);
-    } else {
-      getChannelData(channelId).then((channelData) => {
-        writeDataToFile(channelData.channelName, channelData);
-        console.log('Scraped data located in channel_data.json file.');
-      });
-    }
-    rl.close();
+    rl.question(
+      "Enter the number of years to fetch total likes for (e.g., 1 for the last 365 days): ",
+      (years: string) => {
+        const years_int = parseInt(years);
+
+        if (channelId.includes(", ")) {
+          const channelIds = channelId.split(", ");
+          fetchMultipleChannels(channelIds, years_int);
+        } else {
+          getChannelData(channelId, years_int).then((channelData) => {
+            writeDataToFile(channelData.channelName, channelData);
+            console.log("Scraped data located in channel_data.json file.");
+          });
+        }
+
+        rl.close();
+      }
+    );
   }
 );
