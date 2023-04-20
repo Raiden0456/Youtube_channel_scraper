@@ -66,16 +66,17 @@ async function getChannelData(channelId: string) {
     (1000 * 60 * 60 * 24 * 365);
   const channelAge = Math.round(channelAgeDenor);
   const totalSubscribers = parseInt(channel.statistics.subscriberCount);
+  const totalViews = parseInt(channel.statistics.viewCount);
   const uploadsPlaylistId = channel.contentDetails.relatedPlaylists.uploads;
   const channelName = channel.snippet.title;
+
 
   const videoIds = await getVideoIds(uploadsPlaylistId);
   const videoStats = await getVideoStatistics(videoIds);
 
   const videos = await average.getVideoDetails(videoIds);
-  const averageLikes360 = await average.getAverageLikes(videos, 360);
-  const averageLikes90 = await average.getAverageLikes(videos, 90);
-  const averageLikes30 = await average.getAverageLikes(videos, 30);
+  const averageViews90 = await average.getAverageViews(videos, 90);
+  const averageViews30 = await average.getAverageViews(videos, 30);
 
   const totalLikes = videoStats.reduce((total, stats) => {
     const likeCount = parseInt(stats.likeCount);
@@ -86,10 +87,10 @@ async function getChannelData(channelId: string) {
   const channelData = {
     channelAge,
     totalSubscribers,
+    totalViews,
     totalLikes,
-    averageLikes360,
-    averageLikes90,
-    averageLikes30,
+    averageViews90,
+    averageViews30,
   };
 
   writeDataToFile(channelName, channelData);

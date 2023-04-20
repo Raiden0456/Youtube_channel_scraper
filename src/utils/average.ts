@@ -21,7 +21,7 @@ class Average {
       allDetails.push(
         ...detailsResponse.data.items.map((item) => ({
           id: item.id,
-          likeCount: parseInt(item.statistics.likeCount),
+          viewCount: parseInt(item.statistics.viewCount),
           uploadDate: new Date(item.snippet.publishedAt),
         }))
       );
@@ -30,7 +30,7 @@ class Average {
     return allDetails;
   }
 
-  async getAverageLikes(videos, days) {
+  async getAverageViews(videos, days) {
     const now = new Date();
     //Filtering videos to only include those uploaded within the last N days
     const filteredVideos = videos.filter(
@@ -38,15 +38,15 @@ class Average {
         (now.getTime() - video.uploadDate) / (1000 * 60 * 60 * 24) <= days
     );
 
-    let totalLikes = 0;
+    let totalViews = 0;
     for (const video of filteredVideos) {
-      totalLikes += video.likeCount;
+      totalViews += video.viewCount;
     }
 
-    const averageLikes =
-      filteredVideos.length > 0 ? totalLikes / filteredVideos.length : 0;
+    const averageViews =
+      filteredVideos.length > 0 ? totalViews / filteredVideos.length : 0;
 
-    return Math.floor(averageLikes);
+    return Math.floor(averageViews);
   }
 }
 
