@@ -90,7 +90,7 @@ async function getChannelData(channelId: string) {
     averageViews30,
     averageViews90,
   };
-
+  console.log(channelData.channelName + ": data scraped");
   return channelData;
 }
 
