@@ -9,7 +9,7 @@ This app scrapes YouTube channel data, including:
   - Amount of uploaded videos in the specified last days.
   - Total likes for the specified days. 
   - Average views per month(if specified date > 30 days). 
-  - Average views per 3 month(if specified date > 90 days)s. 
+  - Average views per 3 month(if specified date > 90 days). 
 
 ## Prerequisites
 
