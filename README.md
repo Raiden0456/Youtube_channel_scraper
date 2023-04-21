@@ -52,7 +52,7 @@ npm run dev
 
 3. Input data:
   - The app will prompt you to enter a YouTube channel ID. Enter the channel ID(or multiple IDS with separator ', ') and press Enter. 
-  - After that, app will ask you what amount of previous days to fetch data from, imput number and press Enter. 
+  - After that, app will ask you what amount of previous days to fetch data from, input number and press Enter. 
   - The app will then fetch the channel(s) data and store it in a `channel_data.json` file.
  
  Note: you can use [Comment Picker YouTube Channel ID](https://commentpicker.com/youtube-channel-id.php) to easly get IDs of your channels.
