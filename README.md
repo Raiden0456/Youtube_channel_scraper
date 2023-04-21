@@ -1,12 +1,15 @@
 # YouTube Channel Data Scraper 📝
 
 This app scrapes YouTube channel data, including:
+  - Channel name.
+  - Channel ID.
   - Channel age in years.
   - Total subscribers.
   - Total views.
-  - Total likes for the specified years(e.g last 365 days or 730 or ...). 
-  - Average views per month. 
-  - Average views per 3 months. 
+  - Amount of uploaded videos in the specified last days.
+  - Total likes for the specified days. 
+  - Average views per month(if specified date > 30 days). 
+  - Average views per 3 month(if specified date > 90 days)s. 
 
 ## Prerequisites
 
@@ -49,7 +52,7 @@ npm run dev
 
 3. Input data:
   - The app will prompt you to enter a YouTube channel ID. Enter the channel ID(or multiple IDS with separator ', ') and press Enter. 
-  - After that, app will ask you what years you want to fetch likes from, input 1 for the last 365 days, 2 for last 730 days, e.t.c and press Enter. 
+  - After that, app will ask you what amount of previous days to fetch data from, imput number and press Enter. 
   - The app will then fetch the channel(s) data and store it in a `channel_data.json` file.
  
  Note: you can use [Comment Picker YouTube Channel ID](https://commentpicker.com/youtube-channel-id.php) to easly get IDs of your channels.

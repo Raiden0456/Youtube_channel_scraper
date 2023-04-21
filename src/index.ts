@@ -7,37 +7,29 @@ dotenv.config();
 
 const apiKey = process.env.YOUTUBE_API_KEY;
 
-// Get video IDs in a playlist that were uploaded in the last N years
 async function getVideoIds(
-  years: number,
-  playlistId: string,
+  channelId: string,
+  days: number,
   nextPageToken?: string
 ): Promise<string[]> {
-  const videoUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults=50&playlistId=${playlistId}&key=${apiKey}${
+  const now = new Date();
+  const publishedAfter = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  const videoUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&channelId=${channelId}&key=${apiKey}&maxResults=50&publishedAfter=${publishedAfter}${
     nextPageToken ? "&pageToken=" + nextPageToken : ""
   }`;
   const videoResponse = await axios.get(videoUrl);
 
-  // Get the current timestamp
-  const now = new Date();
+  console.log("Loading videos...")
 
   // Returning an array containing only video IDs
-  const videoIds = videoResponse.data.items
-    .filter((item) => {
-      const videoDate = new Date(item.contentDetails.videoPublishedAt);
-      const daysDifference =
-        (now.getTime() - videoDate.getTime()) / (1000 * 60 * 60 * 24);
-
-      // Only include videos published in the last 365 days
-      return daysDifference <= years * 365;
-    })
-    .map((item) => item.contentDetails.videoId);
+  const videoIds = videoResponse.data.items.map((item) => item.id.videoId);
 
   // If there is a next page, recursively call this function
   if (videoResponse.data.nextPageToken) {
     const nextPageVideoIds = await getVideoIds(
-      years,
-      playlistId,
+      channelId,
+      days,
       videoResponse.data.nextPageToken
     );
     return videoIds.concat(nextPageVideoIds);
@@ -45,6 +37,7 @@ async function getVideoIds(
     return videoIds;
   }
 }
+
 
 // Get video statistics in batches of 50
 async function getVideoStatistics(videoIds: string[]) {
@@ -67,7 +60,7 @@ async function getVideoStatistics(videoIds: string[]) {
 }
 
 // Scrape channel data main function
-async function getChannelData(channelId: string, years: number) {
+async function getChannelData(channelId: string, days: number) {
   const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&id=${channelId}&key=${apiKey}`;
   const channelResponse = await axios.get(channelUrl);
   const channel = channelResponse.data.items[0];
@@ -79,16 +72,15 @@ async function getChannelData(channelId: string, years: number) {
   const channelAge = Math.round(channelAgeDenor);
   const totalSubscribers = parseInt(channel.statistics.subscriberCount);
   const totalViews = parseInt(channel.statistics.viewCount);
-  const uploadsPlaylistId = channel.contentDetails.relatedPlaylists.uploads;
   const channelName = channel.snippet.title;
 
-  const videoIds = await getVideoIds(years, uploadsPlaylistId);
+  const videoIds = await getVideoIds(channelId, days);
   const amountOfVideosPerUserInput = videoIds.length;
   const videoStats = await getVideoStatistics(videoIds);
 
   const videos = await average.getVideoDetails(videoIds);
-  const averageViews90 = await average.getAverageViews(videos, 90);
-  const averageViews30 = await average.getAverageViews(videos, 30);
+  const averageViews90 = (days >= 90) ? await average.getAverageViews(videos, 90) : "Specified days is less than 90";
+  const averageViews30 = (days >=30) ? await average.getAverageViews(videos, 30): "Specified days is less than 30";
 
   const totalLikesPerUserInput = videoStats.reduce((total, stats) => {
     const likeCount = parseInt(stats.likeCount);
@@ -98,13 +90,17 @@ async function getChannelData(channelId: string, years: number) {
 
   const channelData = {
     channelName,
+    channelId,
     channelAge,
     totalSubscribers,
     totalViews,
-    amountOfVideosPerUserInput,
-    totalLikesPerUserInput,
-    averageViews30,
-    averageViews90,
+    dataPeriod: {
+      days,
+      videoAmount: amountOfVideosPerUserInput,
+      likes: totalLikesPerUserInput,
+    },
+    averageViewsPerMonth: averageViews30,
+    averageViewsPer3Months: averageViews90,
   };
   console.log(channelData.channelName + ": data scraped");
   return channelData;
@@ -137,15 +133,15 @@ rl.question(
   "Enter the channel ID(you can input multiple channels with separator ', '): ",
   (channelId: string) => {
     rl.question(
-      "Enter the number of years to fetch total likes for (e.g., 1 for the last 365 days): ",
-      (years: string) => {
-        const years_int = parseInt(years);
+      "Enter the number of days to fetch data for: ",
+      (days: string) => {
+        const days_int = parseInt(days);
 
         if (channelId.includes(", ")) {
           const channelIds = channelId.split(", ");
-          fetchMultipleChannels(channelIds, years_int);
+          fetchMultipleChannels(channelIds, days_int);
         } else {
-          getChannelData(channelId, years_int).then((channelData) => {
+          getChannelData(channelId, days_int).then((channelData) => {
             writeDataToFile(channelData.channelName, channelData);
             console.log("Scraped data located in channel_data.json file.");
           });
