@@ -1,6 +1,7 @@
 import axios from "axios";
 import readline from "readline";
 import dotenv from "dotenv";
+import { load } from 'cheerio';
 import Average from "./utils/average.js";
 import { writeDataToFile } from "./utils/writeFile.js";
 dotenv.config();
@@ -12,12 +13,16 @@ async function getVideoIds(
   days: number,
   nextPageToken?: string
 ): Promise<string[]> {
-  const now = new Date();
-  const publishedAfter = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
-
-  const videoUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&channelId=${channelId}&key=${apiKey}&maxResults=50&publishedAfter=${publishedAfter}${
+  let videoUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&channelId=${channelId}&key=${apiKey}&maxResults=50${
     nextPageToken ? "&pageToken=" + nextPageToken : ""
   }`;
+
+  if (days !== 0) {
+    const now = new Date();
+    const publishedAfter = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+    videoUrl += `&publishedAfter=${publishedAfter}`;
+  }
+
   const videoResponse = await axios.get(videoUrl);
 
   console.log("Loading videos...")
@@ -39,6 +44,7 @@ async function getVideoIds(
 }
 
 
+
 // Get video statistics in batches of 50
 async function getVideoStatistics(videoIds: string[]) {
   const batchSize = 50;
@@ -57,6 +63,18 @@ async function getVideoStatistics(videoIds: string[]) {
   }
 
   return allStats;
+}
+
+// Get channel ID from custom URL
+async function getChannelIdFromCustomUrl(customUrl: string): Promise<string> {
+  const response = await axios.get(`https://www.youtube.com/@${customUrl}`);
+  const $ = load(response.data);
+  const channelId = $('meta[itemprop="identifier"]').attr('content');
+  if (channelId) {
+    return channelId;
+  } else {
+    throw new Error(`No channel found for custom URL: ${customUrl}`);
+  }
 }
 
 // Scrape channel data main function
@@ -88,6 +106,12 @@ async function getChannelData(channelId: string, days: number) {
     return total + (Number.isFinite(likeCount) ? likeCount : 0);
   }, 0);
 
+  const totalCommentsPerUserInput = videoStats.reduce((total, stats) => {
+    const commentCount = parseInt(stats.commentCount);
+    // If commentCount is not a number, return the total without adding it
+    return total + (Number.isFinite(commentCount) ? commentCount : 0);
+  }, 0);
+
   const channelData = {
     channelName,
     channelId,
@@ -98,6 +122,7 @@ async function getChannelData(channelId: string, days: number) {
       days,
       videoAmount: amountOfVideosPerUserInput,
       likes: totalLikesPerUserInput,
+      comments: totalCommentsPerUserInput,
     },
     averageViewsPerMonth: averageViews30,
     averageViewsPer3Months: averageViews90,
@@ -107,11 +132,11 @@ async function getChannelData(channelId: string, days: number) {
 }
 
 // Fetch data for multiple channels
-async function fetchMultipleChannels(channelIds: string[], years: number) {
+async function fetchMultipleChannels(channelIds: string[], days: number) {
   try {
     // Map each channel ID to a promise that resolves to channel data
     const channelDataPromises = channelIds.map((id) =>
-      getChannelData(id, years)
+      getChannelData(id, days)
     );
     const allChannelData = await Promise.all(channelDataPromises);
 
@@ -130,20 +155,25 @@ const rl = readline.createInterface({
 });
 
 rl.question(
-  "Enter the channel ID(you can input multiple channels with separator ', '): ",
-  (channelId: string) => {
+  "Enter the custom URL (you can input multiple URLs with separator ', '): ",
+  (customUrl: string) => {
     rl.question(
-      "Enter the number of days to fetch data for: ",
+      "Enter the number of days to fetch data for(0 for the whole time): ",
       (days: string) => {
         const days_int = parseInt(days);
 
-        if (channelId.includes(", ")) {
-          const channelIds = channelId.split(", ");
-          fetchMultipleChannels(channelIds, days_int);
+        if (customUrl.includes(", ")) {
+          const customURLs = customUrl.split(", ");
+          const channelIdsPromises = customURLs.map(getChannelIdFromCustomUrl);
+          Promise.all(channelIdsPromises).then(channelIds => {
+            fetchMultipleChannels(channelIds, days_int);
+          });
         } else {
-          getChannelData(channelId, days_int).then((channelData) => {
-            writeDataToFile(channelData.channelName, channelData);
-            console.log("Scraped data located in channel_data.json file.");
+          getChannelIdFromCustomUrl(customUrl).then(channelId => {
+            getChannelData(channelId, days_int).then((channelData) => {
+              writeDataToFile(channelData.channelName, channelData);
+              console.log("Scraped data located in channel_data.json file.");
+            });
           });
         }
 
